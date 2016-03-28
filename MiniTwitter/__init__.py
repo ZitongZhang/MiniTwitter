@@ -28,14 +28,7 @@ def teardown_request(_):
         pass
 
 
-@app.route('/')
-def home():
-    cur = g.conn.execute('''SELECT t.content, u.username, t.time, t.userid
-FROM tweets t, users u
-WHERE t.userid = u.userid
-ORDER BY t.time
-DESC''')
-    rows = cur.fetchall()  # assuming there aren't too many tweets for now
+def display_tweets(rows):
     tweets = []
     for row in rows:
         tweet = {'content': row[0],
@@ -54,6 +47,41 @@ WHERE tt.t_time = %s AND tt.t_userid = %s AND tt.tagid = t.tagid''', (row[2], ro
 
         tweets.append(tweet)
     return render_template('home.html', tweets=tweets)
+
+
+@app.route('/')
+def home():
+    cur = g.conn.execute('''SELECT t.content, u.username, t.time, t.userid
+FROM tweets t, users u
+WHERE t.userid = u.userid
+ORDER BY t.time
+DESC''')
+    rows = cur.fetchall()  # assuming there aren't too many tweets for now
+    return display_tweets(rows)
+
+
+# We didn't check for slashes in the username, so we have to allow them here
+@app.route('/user/<path:username>')
+def user(username):
+    cur = g.conn.execute('''SELECT t.content, u.username, t.time, t.userid
+FROM tweets t, users u
+WHERE t.userid = u.userid AND u.username = %s
+ORDER BY t.time
+DESC''', username)
+    rows = cur.fetchall()
+    return display_tweets(rows)
+
+
+@app.route('/tag/<path:tagname>')
+def tag(tagname):
+    cur = g.conn.execute('''SELECT t.content, u.username, t.time, t.userid
+FROM tweets t, users u, tweet_mentions_tag tt, tags
+WHERE t.userid = u.userid AND t.userid = tt.t_userid AND t.time = tt.t_time
+AND tt.tagid = tags.tagid AND tags.tagname = %s
+ORDER BY t.time
+DESC''', tagname)
+    rows = cur.fetchall()
+    return display_tweets(rows)
 
 
 @app.route('/signin', methods=['GET', 'POST'])

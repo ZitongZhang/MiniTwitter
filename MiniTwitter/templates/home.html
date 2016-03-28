@@ -5,28 +5,35 @@
             <li class="list-group-item">
                 {{ tweet.content }}
             </li>
+
             <li class="list-group-item">
                 <ul class="list-inline">
                     <li><span class="glyphicon glyphicon-user"></span></li>
-                    <li>Posted by {{ tweet.username }} at {{ tweet.time }}</li>
+                    <li>Posted by <a href="/user/{{ tweet.username }}">{{ tweet.username }}</a> at {{ tweet.time }}</li>
                 </ul>
             </li>
-            <li class="list-group-item">
-                <ul class="list-inline">
-                    <li><span class="glyphicon glyphicon-heart"></span></li>
-                    {% for like in tweet.likes %}
-                        <li>{{ like }}</li>
-                    {% endfor %}
-                </ul>
-            </li>
-            <li class="list-group-item">
-                <ul class="list-inline">
-                    <li><span class="glyphicon glyphicon-tag"></span></li>
-                    {% for tag in tweet.tags %}
-                        <li>{{ tag }}</li>
-                    {% endfor %}
-                </ul>
-            </li>
+
+            {% if tweet.likes %}
+                <li class="list-group-item">
+                    <ul class="list-inline">
+                        <li><span class="glyphicon glyphicon-heart"></span></li>
+                        {% for username in tweet.likes %}
+                            <li><a href="/user/{{ username }}">{{ username }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endif %}
+
+            {% if tweet.tags %}
+                <li class="list-group-item">
+                    <ul class="list-inline">
+                        <li><span class="glyphicon glyphicon-tag"></span></li>
+                        {% for tag in tweet.tags %}
+                            <li><a href="/tag/{{ tag }}">{{ tag }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </li>
+            {% endif %}
         </ul>
     {% endfor %}
 {% endblock %}
