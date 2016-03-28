@@ -30,7 +30,30 @@ def teardown_request(_):
 
 @app.route('/')
 def home():
-    return render_template('home.html')
+    cur = g.conn.execute('''SELECT t.content, u.username, t.time, t.userid
+FROM tweets t, users u
+WHERE t.userid = u.userid
+ORDER BY t.time
+DESC''')
+    rows = cur.fetchall()  # assuming there aren't too many tweets for now
+    tweets = []
+    for row in rows:
+        tweet = {'content': row[0],
+                 'username': row[1],
+                 'time': str(row[2])}
+
+        cur = g.conn.execute('''SELECT u.username
+FROM user_likes_tweet ut, users u
+WHERE ut.t_time = %s AND ut.t_userid = %s AND ut.userid = u.userid''', (row[2], row[3]))
+        tweet['likes'] = [like[0] for like in cur]  # username of users who like this tweet
+
+        cur = g.conn.execute('''SELECT t.tagname
+FROM tweet_mentions_tag tt, tags t
+WHERE tt.t_time = %s AND tt.t_userid = %s AND tt.tagid = t.tagid''', (row[2], row[3]))
+        tweet['tags'] = [tag[0] for tag in cur]
+
+        tweets.append(tweet)
+    return render_template('home.html', tweets=tweets)
 
 
 @app.route('/signin', methods=['GET', 'POST'])
@@ -43,8 +66,8 @@ def signin():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        cur = g.conn.execute(
-            'SELECT * FROM users WHERE username = %s AND password = %s', (username, password))
+        cur = g.conn.execute('SELECT userid FROM users WHERE username = %s AND password = %s',
+                             (username, password))
         user = cur.fetchone()
         if user is None:
             error = 'Invalid username or password.'

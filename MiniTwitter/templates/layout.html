@@ -23,19 +23,28 @@
         </ul>
         <ul class="nav navbar-nav navbar-right">
             {% if session.username %}
-            <li>{{ session.username[1] }}</li>
-            <li><a href="{{ url_for('signout') }}" class="btn btn-default">Sign Out</a></li>
+                <li>{{ session.username[1] }}</li>
+                <li><a href="{{ url_for('signout') }}" class="btn btn-default">Sign Out</a></li>
             {% else %}
-            <li><a href="{{ url_for('signup') }}" class="btn btn-primary">Sign Up</a></li>
-            <li><a href="{{ url_for('signin') }}" class="btn btn-default">Sign In</a></li>
+                <li><a href="{{ url_for('signup') }}" class="btn btn-primary">Sign Up</a></li>
+                <li><a href="{{ url_for('signin') }}" class="btn btn-default">Sign In</a></li>
             {% endif %}
         </ul>
     </div>
 </nav>
 
 <div class="container">
+    {% if error %}
+        <div class="alert alert-danger fade in">
+            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+            {{ error | safe }}
+        </div>
+    {% endif %}
     {% for message in get_flashed_messages() %}
-        <div class="alert alert-info">{{ message | safe }}</div>
+        <div class="alert alert-info fade in">
+            <a href="#" class="close" data-dismiss="alert" aria-label="close">&times;</a>
+            {{ message | safe }}
+        </div>
     {% endfor %}
     {% block body %}{% endblock %}
 </div>
