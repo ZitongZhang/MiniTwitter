@@ -1,6 +1,10 @@
 {% extends "layout.html" %}
 {% block body %}
-
+<ul>
+	{% for user in users %}
+	<li>{{ user.user }}</li>
+	{% endfor %}
+</ul>
 {% endblock %}
 
 {% block script %}
