@@ -125,7 +125,7 @@ def signup():
             g.conn.execute('INSERT INTO users (username, password) VALUES (%s, %s)', (username, password))
             flash('Thank you for signing up! Please sign in using your username and password.')
             # clear the current login information
-            session.pop('username')
+            session.pop('username', None)
             return redirect(url_for('signin'))
         except Exception as e:
             error = str(e)
