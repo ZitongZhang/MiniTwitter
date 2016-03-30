@@ -28,7 +28,7 @@
                 <ul class="list-inline like-list">
                     <li><span class="glyphicon glyphicon-heart"></span></li>
                     {% for username in tweet.likes %}
-                        <li><a href="{{ url_for('user', username=tweet.username) }}">{{ username }}</a></li>
+                        <li><a href="{{ url_for('user', username=username) }}">{{ username }}</a></li>
                     {% endfor %}
                 </ul>
             </li>
@@ -55,33 +55,35 @@
 {% endblock %}
 
 {% block script %}
-    <script type=text/javascript>
-        $(function () {
-            $('.like-button').click(function () {
-                var curButton = $(this);
-                $.getJSON($SCRIPT_ROOT + '/_like', {
-                    t_id: curButton.attr('id'),
-                    liking: !curButton.hasClass('active') // whether to like or to dislike
-                }, function (data) {
-                    var likeList = curButton.parent().siblings().children('.like-list');
-                    if (data.liked) {
-                        curButton.addClass('active').text('Liked');
-                        var usernameInList = likeList.find('li').filter(function () {
-                            return this.textContent === '{{ session.username[1] }}';
-                        }).length;
-                        if (!usernameInList) {
-                            likeList.append('<li><a href="{{ url_for('user', username=session.username[1]) }}">{{ session.username[1] }}</a></li>')
+    {% if session.username %}
+        <script type=text/javascript>
+            $(function () {
+                $('.like-button').click(function () {
+                    var curButton = $(this);
+                    $.getJSON($SCRIPT_ROOT + '/_like', {
+                        t_id: curButton.attr('id'),
+                        liking: !curButton.hasClass('active') // whether to like or to dislike
+                    }, function (data) {
+                        var likeList = curButton.parent().siblings().children('.like-list');
+                        if (data.liked) {
+                            curButton.addClass('active').text('Liked');
+                            var usernameInList = likeList.find('li').filter(function () {
+                                return this.textContent === '{{ session.username[1] }}';
+                            }).length;
+                            if (!usernameInList) {
+                                likeList.append('<li><a href="{{ url_for('user', username=session.username[1]) }}">{{ session.username[1] }}</a></li>')
+                            }
                         }
-                    }
-                    else {
-                        curButton.removeClass('active').text('Like');
-                        likeList.find('li').filter(function () {
-                            return this.textContent === '{{ session.username[1] }}';
-                        }).remove();
-                    }
+                        else {
+                            curButton.removeClass('active').text('Like');
+                            likeList.find('li').filter(function () {
+                                return this.textContent === '{{ session.username[1] }}';
+                            }).remove();
+                        }
+                    });
+                    return false; // suppress default action
                 });
-                return false; // suppress default action
             });
-        });
-    </script>
+        </script>
+    {% endif %}
 {% endblock %}

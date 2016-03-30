@@ -1,15 +1,37 @@
 {% extends "layout.html" %}
 {% block body %}
-<h1>Select a friend to Direct Message:</h1>
-<ul>
-	{% for user in users %}
-	<li><a href = "/dm/{{ user.user }}">{{ user.user }}</a></li>
-	{% endfor %}
-</ul>
+    <h1>Select a User to Send Direct Messages:</h1>
+
+    <div class="panel panel-info">
+        <div class="panel-heading">All Users</div>
+        <div class="panel-body">
+            <ul class="list-inline">
+                {% for user in users %}
+                    <li><a href="{{ url_for('chat', username=user) }}">@{{ user }}</a></li>
+                {% endfor %}
+            </ul>
+        </div>
+    </div>
+
+    {% for category in categories %}
+        <div class="panel panel-default">
+            <div class="panel-heading">
+                <a data-toggle="collapse" href="#{{ category.categoryname }}">{{ category.categoryname }}</a>
+            </div>
+            <div id="{{ category.categoryname }}" class="panel-collapse collapse">
+                <ul class="list-group">
+                    {% for group in category.groups %}
+                        <li class="list-group-item">
+                            <ul class="list-inline">
+                                <li>{{ group.groupname }}:</li>
+                                {% for user in group.users %}
+                                    <li><a href="{{ url_for('chat', username=user) }}">@{{ user }}</a></li>
+                                {% endfor %}
+                            </ul>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    {% endfor %}
 {% endblock %}
-
-{% block script %}
-
-{% endblock %}
-
-<a href="/user/{{ tweet.username }}">{{ tweet.username }}</a>

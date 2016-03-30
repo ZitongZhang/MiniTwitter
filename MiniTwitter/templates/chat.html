@@ -1,18 +1,24 @@
 {% extends "layout.html" %}
 {% block body %}
-<ul>
-	{% for message in messages.content %}
-	<li>{{ message }}</li>
-	{% endfor %}
-</ul>
-    <form class="form-horizontal" role="form" action="{{ url_for('updatechat', username = messages.targetid) }}" method=post>
+    <ul class="list-group">
+        {% for message in messages %}
+            {% if message.sending %}
+                <li class="list-group-item list-group-item-success">
+            {% else %}
+                <li class="list-group-item">
+            {% endif %}
+                    <div>{{ message.content }}</div>
+                    <small>{{ message.time }}</small>
+                </li>
+        {% endfor %}
+    </ul>
+    <form class="form-horizontal" role="form" action="{{ url_for('updatechat', username=receivername) }}" method=post>
         <div class="form-group">
-            <label class="control-label" for="message">Type in a message ... </label>
+            <label class="control-label" for="message">Type in a message...</label>
             <input type="text" class="form-control" id="message" name="message">
         </div>
-        <button type="submit" class="btn btn-primary">Send</button>
+        <button type="submit" class="btn btn-primary" disabled>Send</button>
     </form>
-
 {% endblock %}
 
 {% block script %}

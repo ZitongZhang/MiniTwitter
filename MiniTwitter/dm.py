@@ -1,51 +1,52 @@
 from flask import request, render_template, g, session, redirect, flash, url_for, abort
-# inevitable circular import
-# see http://flask.pocoo.org/docs/0.10/patterns/packages/
+
+# Inevitable circular import
+# See http://flask.pocoo.org/docs/0.10/patterns/packages/
 from MiniTwitter import app
 
 
-
-def display_users(rows):
-    users = []
-    for row in rows:
-        user = {'user': row[1]}
-
-        cur = g.conn.execute('''SELECT u.username
-FROM users u''')
-
-        users.append(user)
-    return render_template('dm.html', users=users)
-
-
-
-def display_chat(rows, receiverid):
-    messages = {'content': [row[3] for row in rows],
-        		'targetid': receiverid}
-    for row in rows:
-        cur = g.conn.execute('''SELECT d.content
-FROM DM d''')
-    return render_template('chat.html', messages=messages)
-
-#cur = g.conn.execute('''SELECT u.username
-#FROM users u
-#WHERE u.userid = receiverid''', username)
- #   receiverid = cur.fetchone()
-
-
-@app.route('/dm') #display all users that you can chat with
+@app.route('/dm')  # display all users that you can chat with
 def dm():
-    cur = g.conn.execute('''SELECT t.content, u.username, t.time, t.userid
-FROM tweets t, users u
-WHERE t.userid = u.userid
-ORDER BY t.time
-DESC''')
-    rows = cur.fetchall() 
-    return display_users(rows)
+    if 'username' not in session:
+        flash('Please sign in to send Direct Messages.')
+        return redirect(url_for('signin'))
+    userid = session['username'][0]
+
+    cur = g.conn.execute('''SELECT username FROM users WHERE userid != %s''', userid)
+    users = [user[0] for user in cur]
+
+    categories = []
+    cur = g.conn.execute('''SELECT categoryid, categoryname FROM categories''')
+    c_rows = cur.fetchall()
+    for c_row in c_rows:
+        category = {'categoryname': c_row[1]}
+
+        groups = []
+        cur = g.conn.execute('''SELECT g.groupid, g.groupname
+FROM groups g, group_belongs_to_category gc
+WHERE g.groupid = gc.groupid AND gc.categoryid = %s''', c_row[0])
+        g_rows = cur.fetchall()
+        for g_row in g_rows:
+            group = {'groupname': g_row[1]}
+            cur = g.conn.execute('''SELECT u.username
+FROM users u, user_member_of_group ug
+WHERE u.userid != %s AND u.userid = ug.userid AND ug.groupid = %s''', (userid, g_row[0]))
+            group['users'] = [user[0] for user in cur]
+            groups.append(group)
+
+        category['groups'] = groups
+        categories.append(category)
+
+    return render_template('dm.html', users=users, categories=categories)
 
 
-
-@app.route('/dm/<path:username>') #display chat 
+@app.route('/dm/<path:username>')  # display chat
 def chat(username):
+    if 'username' not in session:
+        flash('Please sign in to continue.')
+        return redirect(url_for('signin'))
+    senderid = session['username'][0]
+
     cur = g.conn.execute('''SELECT u.userid
 FROM users u
 WHERE u.username = %s''', username)
@@ -53,35 +54,40 @@ WHERE u.username = %s''', username)
     if receiverid is None:
         return abort(404)
     receiverid = receiverid[0]
+
     cur = g.conn.execute('''SELECT d.senderid, d.receiverid, d.time, d.content
 FROM DM d
 WHERE d.senderid = %s AND d.receiverid = %s OR d.senderid = %s AND d.receiverid = %s
 ORDER BY d.time
-DESC''', session['username'][0], receiverid, receiverid, session['username'][0])
-    rows = cur.fetchall()
-    return display_chat(rows, receiverid)
+ASC''', session['username'][0], receiverid, receiverid, session['username'][0])
+    messages = []
+    for row in cur:
+        messages.append({'content': row[3],
+                         'sending': row[0] == senderid,
+                         'time': row[2].strftime('%Y-%m-%d %H:%M:%S')})
+    return render_template('chat.html', messages=messages, receivername=username)
 
 
-
-@app.route('/dm/<path:username>', methods=['GET','POST']) #update chat 
+@app.route('/dm/<path:username>', methods=['POST'])  # update chat
 def updatechat(username):
-    error = None
-    if request.method == 'POST' or 'GET':
-    	senderid = session['username'][0]
-        print senderid
-    	cur = g.conn.execute('''SELECT u.userid
+    if 'username' not in session:
+        flash('Please sign in to continue.')
+        return redirect(url_for('signin'))
+    senderid = session['username'][0]
+
+    cur = g.conn.execute('''SELECT u.userid
 FROM users u
 WHERE u.username = %s''', username)
-    	receiverid = cur.fetchone()
-        print receiverid
-    	if receiverid is None:
-            print 'chris'
-    	    return abort(404)
-    	receiverid = receiverid[0]
-        message = request.form['message']
-        try:
-            g.conn.execute('INSERT INTO DM (senderid, receiverid, content) VALUES (%s, %s, %s)', (senderid, receiverid, message))
-            flash('Sent.')
-            return redirect(url_for('chat', username=username))
-        except Exception as e:
-            pass
+    receiverid = cur.fetchone()
+    if receiverid is None:
+        return abort(404)
+    receiverid = receiverid[0]
+
+    message = request.form['message']
+    try:
+        g.conn.execute('''INSERT INTO dm (senderid, receiverid, content) VALUES (%s, %s, %s)''',
+                       (senderid, receiverid, message))
+    except:
+        pass
+
+    return redirect(url_for('chat', username=username))

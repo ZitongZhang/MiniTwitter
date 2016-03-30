@@ -35,7 +35,7 @@ def display_tweets(rows):
         # The id will be used to associate button with tweet
         tweet = {'content': row[0],
                  'username': row[1],
-                 'time': str(row[2]),
+                 'time': row[2].strftime('%Y-%m-%d %H:%M:%S'),
                  'id': row[2].strftime('%Y-%m-%d %H:%M:%S.%f') + ',' + str(row[3])}
 
         cur = g.conn.execute('''SELECT u.username
@@ -53,7 +53,7 @@ FROM comments c, users u
 WHERE c.t_time = %s AND c.t_userid = %s AND c.userid = u.userid''', (row[2], row[3]))
         tweet['comments'] = [{'content': comment[0],
                               'username': comment[1],
-                              'time': str(comment[2])} for comment in cur]
+                              'time': comment[2].strftime('%Y-%m-%d %H:%M:%S')} for comment in cur]
         tweets.append(tweet)
     return render_template('home.html', tweets=tweets)
 
