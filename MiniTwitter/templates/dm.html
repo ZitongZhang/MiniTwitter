@@ -1,8 +1,9 @@
 {% extends "layout.html" %}
 {% block body %}
+<h1>Select a friend to Direct Message:</h1>
 <ul>
 	{% for user in users %}
-	<li>{{ user.user }}</li>
+	<li><a href = "/dm/{{ user.user }}">{{ user.user }}</a></li>
 	{% endfor %}
 </ul>
 {% endblock %}
@@ -10,3 +11,5 @@
 {% block script %}
 
 {% endblock %}
+
+<a href="/user/{{ tweet.username }}">{{ tweet.username }}</a>

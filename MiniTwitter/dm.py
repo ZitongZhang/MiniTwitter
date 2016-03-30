@@ -66,15 +66,18 @@ DESC''', session['username'][0], receiverid, receiverid, session['username'][0])
 @app.route('/dm/<path:username>', methods=['GET','POST']) #update chat 
 def updatechat(username):
     error = None
-    if request.method == 'POST':
+    if request.method == 'POST' or 'GET':
     	senderid = session['username'][0]
+        print senderid
     	cur = g.conn.execute('''SELECT u.userid
 FROM users u
 WHERE u.username = %s''', username)
     	receiverid = cur.fetchone()
+        print receiverid
     	if receiverid is None:
             print 'chris'
     	    return abort(404)
+    	receiverid = receiverid[0]
         message = request.form['message']
         try:
             g.conn.execute('INSERT INTO DM (senderid, receiverid, content) VALUES (%s, %s, %s)', (senderid, receiverid, message))
