@@ -4,36 +4,84 @@
         <ul class="list-group">
             <li class="list-group-item">
                 {{ tweet.content }}
+                {% if session.username %}
+                    {% if session.username[1] in tweet.likes %}
+                        <button type="button" id="{{ tweet.id }}" class="like-button btn btn-default btn-xs active">
+                            Liked
+                        </button>
+                    {% else %}
+                        <button type="button" id="{{ tweet.id }}" class="like-button btn btn-default btn-xs">Like
+                        </button>
+                    {% endif %}
+                {% endif %}
             </li>
 
             <li class="list-group-item">
                 <ul class="list-inline">
                     <li><span class="glyphicon glyphicon-user"></span></li>
-                    <li>Posted by <a href="/user/{{ tweet.username }}">{{ tweet.username }}</a> at {{ tweet.time }}</li>
+                    <li>Posted by <a href="{{ url_for('user', username=tweet.username) }}">{{ tweet.username }}</a>
+                        at {{ tweet.time }}</li>
                 </ul>
             </li>
 
-            {% if tweet.likes %}
-                <li class="list-group-item">
-                    <ul class="list-inline">
-                        <li><span class="glyphicon glyphicon-heart"></span></li>
-                        {% for username in tweet.likes %}
-                            <li><a href="/user/{{ username }}">{{ username }}</a></li>
-                        {% endfor %}
-                    </ul>
-                </li>
-            {% endif %}
+            <li class="list-group-item">
+                <ul class="list-inline like-list">
+                    <li><span class="glyphicon glyphicon-heart"></span></li>
+                    {% for username in tweet.likes %}
+                        <li><a href="{{ url_for('user', username=tweet.username) }}">{{ username }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
 
-            {% if tweet.tags %}
+            <li class="list-group-item">
+                <ul class="list-inline">
+                    <li><span class="glyphicon glyphicon-tag"></span></li>
+                    {% for tag in tweet.tags %}
+                        <li><a href="{{ url_for('tag', tagname=tag) }}">{{ tag }}</a></li>
+                    {% endfor %}
+                </ul>
+            </li>
+
+            {% for comment in tweet.comments %}
                 <li class="list-group-item">
-                    <ul class="list-inline">
-                        <li><span class="glyphicon glyphicon-tag"></span></li>
-                        {% for tag in tweet.tags %}
-                            <li><a href="/tag/{{ tag }}">{{ tag }}</a></li>
-                        {% endfor %}
-                    </ul>
+                    <div>
+                        <a href="{{ url_for('user', username=comment.username) }}">@{{ comment.username }}</a>: {{ comment.content }}
+                    </div>
+                    <small>{{ comment.time }}</small>
                 </li>
-            {% endif %}
+            {% endfor %}
         </ul>
     {% endfor %}
+{% endblock %}
+
+{% block script %}
+    <script type=text/javascript>
+        $(function () {
+            $('.like-button').click(function () {
+                var curButton = $(this);
+                $.getJSON($SCRIPT_ROOT + '/_like', {
+                    t_id: curButton.attr('id'),
+                    liking: !curButton.hasClass('active') // whether to like or to dislike
+                }, function (data) {
+                    var likeList = curButton.parent().siblings().children('.like-list');
+                    if (data.liked) {
+                        curButton.addClass('active').text('Liked');
+                        var usernameInList = likeList.find('li').filter(function () {
+                            return this.textContent === '{{ session.username[1] }}';
+                        }).length;
+                        if (!usernameInList) {
+                            likeList.append('<li><a href="{{ url_for('user', username=session.username[1]) }}">{{ session.username[1] }}</a></li>')
+                        }
+                    }
+                    else {
+                        curButton.removeClass('active').text('Like');
+                        likeList.find('li').filter(function () {
+                            return this.textContent === '{{ session.username[1] }}';
+                        }).remove();
+                    }
+                });
+                return false; // suppress default action
+            });
+        });
+    </script>
 {% endblock %}

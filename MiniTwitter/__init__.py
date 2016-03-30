@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, g, session, redirect, flash, url_for
+from flask import Flask, request, render_template, g, session, redirect, flash, url_for, jsonify
 from secret import connection_string, secret_key
 import sqlalchemy
 import traceback
@@ -31,9 +31,12 @@ def teardown_request(_):
 def display_tweets(rows):
     tweets = []
     for row in rows:
+        # Each tweet gets its unique id, which is a combination of time and userid
+        # The id will be used to associate button with tweet
         tweet = {'content': row[0],
                  'username': row[1],
-                 'time': str(row[2])}
+                 'time': str(row[2]),
+                 'id': row[2].strftime('%Y-%m-%d %H:%M:%S.%f') + ',' + str(row[3])}
 
         cur = g.conn.execute('''SELECT u.username
 FROM user_likes_tweet ut, users u
@@ -45,6 +48,12 @@ FROM tweet_mentions_tag tt, tags t
 WHERE tt.t_time = %s AND tt.t_userid = %s AND tt.tagid = t.tagid''', (row[2], row[3]))
         tweet['tags'] = [tag[0] for tag in cur]
 
+        cur = g.conn.execute('''SELECT c.content, u.username, c.time
+FROM comments c, users u
+WHERE c.t_time = %s AND c.t_userid = %s AND c.userid = u.userid''', (row[2], row[3]))
+        tweet['comments'] = [{'content': comment[0],
+                              'username': comment[1],
+                              'time': str(comment[2])} for comment in cur]
         tweets.append(tweet)
     return render_template('home.html', tweets=tweets)
 
@@ -84,6 +93,37 @@ DESC''', tagname)
     return display_tweets(rows)
 
 
+@app.route('/_like')
+def _like():
+    try:
+        if 'username' not in session:
+            return redirect(url_for('signin'))  # not logged in
+        userid = session['username'][0]
+
+        # Example t_id: '2016-11-11 01:14:07.000000+2'
+        t_id = request.args.get('t_id')
+        liking = request.args.get('liking') == 'true'
+
+        t_time, t_userid = t_id[:26], t_id[27:]
+        cur = g.conn.execute('''SELECT *
+FROM user_likes_tweet
+WHERE userid = %s AND t_userid = %s AND t_time = %s''', (userid, t_userid, t_time))
+        # Whether already liked
+        liked = cur.fetchone() is not None
+
+        if liking and not liked:
+            g.conn.execute('''INSERT INTO user_likes_tweet (userid, t_userid, t_time)
+VALUES (%s, %s, %s)''', (userid, t_userid, t_time))
+
+        if not liking and liked:
+            g.conn.execute('''DELETE FROM user_likes_tweet
+WHERE userid = %s AND t_userid = %s AND t_time = %s''', (userid, t_userid, t_time))
+
+        return jsonify(liked=liking)
+    except:
+        pass
+
+
 @app.route('/signin', methods=['GET', 'POST'])
 def signin():
     if 'username' in session:
@@ -94,7 +134,7 @@ def signin():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        cur = g.conn.execute('SELECT userid FROM users WHERE username = %s AND password = %s',
+        cur = g.conn.execute('''SELECT userid FROM users WHERE username = %s AND password = %s''',
                              (username, password))
         user = cur.fetchone()
         if user is None:
@@ -122,7 +162,7 @@ def signup():
         username = request.form['username']
         password = request.form['password']
         try:
-            g.conn.execute('INSERT INTO users (username, password) VALUES (%s, %s)', (username, password))
+            g.conn.execute('''INSERT INTO users (username, password) VALUES (%s, %s)''', (username, password))
             flash('Thank you for signing up! Please sign in using your username and password.')
             # clear the current login information
             session.pop('username', None)
